@@ -52,6 +52,22 @@ export default defineInterface({
       }
     },
     {
+      field: "displayMode",
+      name: "Display Mode",
+      type: "string",
+      meta: {
+        width: "half",
+        interface: "select-dropdown",
+        options: {
+          choices: [
+            { text: "Button", value: "button" },
+            { text: "List", value: "list" }
+          ]
+        },
+        default: "button"
+      }
+    },
+    {
       field: "outputFormat",
       name: "Output Format",
       type: "string",

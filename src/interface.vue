@@ -1,17 +1,49 @@
 <template>
   <div class="m2a-field-selector">
-    <v-button
-      class="select-button"
-      :disabled="disabled"
-      @click="drawerOpen = true"
-      secondary
-    >
-      <span v-if="selectedItems.length" class="selected-values">
-        {{ selectedItems.map(item => item.item[item.outputField]).join(', ') }}
-      </span>
-      <span v-else>{{ placeholder || "Choose items..." }}</span>
-      <v-icon name="arrow_right" />
-    </v-button>
+    <template v-if="displayMode === 'button'">
+      <v-button
+        class="select-button"
+        :disabled="disabled"
+        @click="drawerOpen = true"
+        secondary
+      >
+        <span v-if="selectedItems.length" class="selected-values">
+          {{ selectedItems.map(item => item.item[item.outputField]).join(', ') }}
+        </span>
+        <span v-else>{{ placeholder || "Choose items..." }}</span>
+        <v-icon name="arrow_right" />
+      </v-button>
+    </template>
+
+    <template v-else>
+      <v-input
+        v-model="searchQuery"
+        placeholder="Search..."
+        :icon-left="'search'"
+        class="search-input"
+      />
+      <v-list class="collection-list direct-list">
+        <template v-for="config in collections" :key="config.collection">
+          <v-list-item
+            v-for="item in filteredItems(config.collection, config.outputField)"
+            :key="`${config.collection}-${item.id}`"
+            clickable
+            :active="isSelected(config.collection, item.id)"
+            @click="toggleItem(config, item)"
+          >
+            <v-list-item-content class="item-content">
+              <div class="item-row">
+                <v-checkbox
+                  :model-value="isSelected(config.collection, item.id)"
+                  @update:model-value="toggleItem(config, item)"
+                />
+                <span class="item-label">{{ item[config.outputField] }}</span>
+              </div>
+            </v-list-item-content>
+          </v-list-item>
+        </template>
+      </v-list>
+    </template>
 
     <v-drawer
       v-model="drawerOpen"
@@ -73,6 +105,7 @@ const props = defineProps<{
   collections: CollectionConfig[];
   placeholder?: string;
   outputFormat?: 'detailed' | 'simple' | 'ids';
+  displayMode?: 'button' | 'list';
 }>();
 
 const emit = defineEmits(['input']);
@@ -95,6 +128,9 @@ const filteredItems = (collection: string, outputField: string) => {
     String(item[outputField]).toLowerCase().includes(searchQuery.value.toLowerCase())
   );
 };
+
+// Add this computed property
+const displayMode = computed(() => props.displayMode || 'button');
 
 // Methods
 const fetchCollectionItems = async (collection: string) => {
@@ -361,5 +397,11 @@ watch(
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.direct-list {
+  border: var(--border-width) solid var(--border-normal);
+  border-radius: var(--border-radius);
+  max-height: 400px;
 }
 </style>
