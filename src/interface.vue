@@ -15,6 +15,60 @@
       </v-button>
     </template>
 
+    <template v-else-if="displayMode === 'drag'">
+      <v-input
+        v-model="searchQuery"
+        placeholder="Search..."
+        :icon-left="'search'"
+        class="search-input"
+      />
+      <v-list class="collection-list direct-list">
+        <div class="draggable-container">
+          <template v-for="(item, index) in selectedItems" :key="`${item.collection}-${item.item.id}`">
+            <v-list-item
+              draggable="true"
+              @dragstart="dragStart($event, index)"
+              @dragover.prevent
+              @dragenter.prevent
+              @drop="drop($event, index)"
+            >
+              <v-list-item-content class="item-content">
+                <div class="item-row">
+                  <v-icon name="drag_handle" class="drag-handle" />
+                  <v-checkbox
+                    :model-value="true"
+                    @update:model-value="() => toggleItem({ collection: item.collection, outputField: item.outputField }, item.item)"
+                  />
+                  <span class="item-label">{{ item.item[item.outputField] }}</span>
+                </div>
+              </v-list-item-content>
+            </v-list-item>
+          </template>
+        </div>
+
+        <v-divider v-if="selectedItems.length > 0" />
+
+        <template v-for="config in collections" :key="config.collection">
+          <v-list-item
+            v-for="item in filteredUnselectedItems(config)"
+            :key="`${config.collection}-${item.id}`"
+            clickable
+            @click="toggleItem(config, item)"
+          >
+            <v-list-item-content class="item-content">
+              <div class="item-row">
+                <v-checkbox
+                  :model-value="false"
+                  @update:model-value="() => toggleItem(config, item)"
+                />
+                <span class="item-label">{{ item[config.outputField] }}</span>
+              </div>
+            </v-list-item-content>
+          </v-list-item>
+        </template>
+      </v-list>
+    </template>
+
     <template v-else>
       <v-input
         v-model="searchQuery"
@@ -92,6 +146,8 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useApi } from '@directus/extensions-sdk';
 
+// Remove VDraggable import
+
 const api = useApi();
 
 interface CollectionConfig {
@@ -105,7 +161,7 @@ const props = defineProps<{
   collections: CollectionConfig[];
   placeholder?: string;
   outputFormat?: 'detailed' | 'simple' | 'ids';
-  displayMode?: 'button' | 'list';
+  displayMode?: 'button' | 'drag';
 }>();
 
 const emit = defineEmits(['input']);
@@ -119,6 +175,7 @@ const selectedItems = ref<Array<{
   outputField: string;
   item: any;
 }>>([]);
+const selectedOrder = ref<string[]>([]);
 
 // Computed
 const filteredItems = (collection: string, outputField: string) => {
@@ -131,6 +188,16 @@ const filteredItems = (collection: string, outputField: string) => {
 
 // Add this computed property
 const displayMode = computed(() => props.displayMode || 'button');
+
+// Add this computed
+const filteredUnselectedItems = (config: CollectionConfig) => {
+  const items = collectionItems.value[config.collection] || [];
+  const filtered = items.filter(item => !isSelected(config.collection, item.id));
+  if (!searchQuery.value) return filtered;
+  return filtered.filter(item =>
+    String(item[config.outputField]).toLowerCase().includes(searchQuery.value.toLowerCase())
+  );
+};
 
 // Methods
 const fetchCollectionItems = async (collection: string) => {
@@ -251,6 +318,30 @@ const processValue = (value: any) => {
   }
 };
 
+// Add drag handlers
+const draggedItem = ref<number | null>(null);
+
+const dragStart = (event: DragEvent, index: number) => {
+  draggedItem.value = index;
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move';
+  }
+};
+
+const drop = (event: DragEvent, index: number) => {
+  event.preventDefault();
+  if (draggedItem.value === null) return;
+
+  const items = [...selectedItems.value];
+  const itemToMove = items[draggedItem.value];
+  items.splice(draggedItem.value, 1);
+  items.splice(index, 0, itemToMove);
+
+  selectedItems.value = items;
+  draggedItem.value = null;
+  emitValue();
+};
+
 // Initialize
 onMounted(async () => {
   // Fetch items for all collections
@@ -284,6 +375,11 @@ onMounted(async () => {
     }
   }
 });
+
+// Initialize selectedOrder when items are loaded
+watch(selectedItems, (items) => {
+  selectedOrder.value = items.map(item => `${item.collection}-${item.item.id}`);
+}, { immediate: true });
 
 // Watch for collections changes
 watch(() => props.collections, async (newCollections) => {
@@ -403,5 +499,24 @@ watch(
   border: var(--border-width) solid var(--border-normal);
   border-radius: var(--border-radius);
   max-height: 400px;
+}
+
+.drag-handle {
+  cursor: move;
+  color: var(--foreground-subdued);
+  margin-right: 8px;
+}
+
+.v-list-item-group {
+  width: 100%;
+}
+
+.v-list-item {
+  user-select: none;
+
+  &[draggable="true"]:active {
+    opacity: 0.5;
+    background-color: var(--background-subdued);
+  }
 }
 </style>

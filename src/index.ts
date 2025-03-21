@@ -61,7 +61,7 @@ export default defineInterface({
         options: {
           choices: [
             { text: "Button", value: "button" },
-            { text: "List", value: "list" }
+            { text: "Draggable List", value: "drag" }
           ]
         },
         default: "button"
