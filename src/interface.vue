@@ -146,8 +146,6 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useApi } from '@directus/extensions-sdk';
 
-// Remove VDraggable import
-
 const api = useApi();
 
 interface CollectionConfig {
