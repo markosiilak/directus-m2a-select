@@ -9,7 +9,6 @@ export default defineInterface({
   component: InterfaceComponent,
   types: ["json", "alias"],
   group: "relational",
-  localTypes: ["m2a"],
   options: [
     {
       field: "collections",
