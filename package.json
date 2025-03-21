@@ -1,0 +1,22 @@
+{
+  "name": "directus-extension-m2a-field-selector",
+  "version": "1.0.0",
+  "description": "Directus interface extension for selecting items from collections with custom field output",
+  "type": "module",
+  "directus:extension": {
+    "type": "interface",
+    "path": "dist/index.js",
+    "source": "src/index.ts",
+    "host": "^10.1.8"
+  },
+  "scripts": {
+    "build": "directus-extension build",
+    "dev": "directus-extension build --watch",
+    "link": "directus-extension link"
+  },
+  "keywords": [
+    "directus",
+    "directus-extension",
+    "directus-custom-interface"
+  ]
+}
