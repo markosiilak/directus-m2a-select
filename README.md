@@ -13,6 +13,9 @@ A Directus interface extension that allows selecting items from multiple collect
 
 - Select items from multiple collections
 - Customize the output field for each collection
+- Three display modes: button, drag, and direct
+- Search functionality
+- Drag and drop reordering (in drag mode)
 - Three output format options:
   - Detailed: Returns collection and ID information
   - Simple: Returns only the selected field values
@@ -33,12 +36,30 @@ Format:
 }
 ```
 
+### Display Mode
+Choose how the interface should be displayed:
+
+- **Button**: Opens a drawer with the selection interface (default)
+- **Drag**: Shows selected items in a draggable list for reordering
+- **Direct**: Shows the selection interface directly in the field
+
 ### Output Format
 Choose how the selected items should be formatted in the data:
 
-- **Detailed**: `{ collection: "items", id: 1, value: "Item name" }`
-- **Simple**: `"Item name"`
-- **IDs only**: `1`
+- **Detailed**: Returns a standard Directus M2A relationship format
+  ```json
+  {
+    "collection_name": [1, 2, 3]
+  }
+  ```
+- **Simple**: Returns an array of output field values
+  ```json
+  ["Item 1", "Item 2", "Item 3"]
+  ```
+- **IDs only**: Returns an array of item IDs
+  ```json
+  [1, 2, 3]
+  ```
 
 ### Placeholder
 Customize the placeholder text shown in the selector.
