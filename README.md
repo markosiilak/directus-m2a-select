@@ -94,3 +94,14 @@ Customize the placeholder text shown in the selector.
 
 - Directus 9.x and later
 - Field types: json, alias
+  
+
+## Project Setup
+
+The project requires `@directus/extensions-sdk` to be installed as a development dependency:
+
+```bash
+npm install --save-dev @directus/extensions-sdk
+```
+
+This SDK provides the necessary tools and types for building Directus extensions.
