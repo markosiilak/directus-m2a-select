@@ -75,4 +75,3 @@ Customize the placeholder text shown in the selector.
 
 - Directus 9.x and later
 - Field types: json, alias
-- Local types: m2a
