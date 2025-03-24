@@ -61,9 +61,9 @@ export default defineInterface({
           choices: [
             { text: "Button", value: "button" },
             { text: "Draggable List", value: "drag" }
-          ]
-        },
-        default: "button"
+          ],
+          default: "button"
+        }
       }
     },
     {
@@ -78,9 +78,9 @@ export default defineInterface({
             { text: "Detailed (with collection and id)", value: "detailed" },
             { text: "Simple (values only)", value: "simple" },
             { text: "IDs only", value: "ids" }
-          ]
-        },
-        default: "detailed"
+          ],
+          default: "detailed"
+        }
       }
     },
     {
