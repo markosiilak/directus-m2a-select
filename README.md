@@ -49,7 +49,26 @@ Choose how the selected items should be formatted in the data:
 - **Detailed**: Returns a standard Directus M2A relationship format
   ```json
   {
-    "collection_name": [1, 2, 3]
+    "categories": [
+      {
+        "collection": "category",
+        "field": "title",
+        "value": "Camps",
+        "id": 94426642
+      },
+      {
+        "collection": "category",
+        "field": "title",
+        "value": "Film",
+        "id": 3143044
+      },
+      {
+        "collection": "category",
+        "field": "title",
+        "value": "Music",
+        "id": 104263205
+      }
+    ]
   }
   ```
 - **Simple**: Returns an array of output field values
