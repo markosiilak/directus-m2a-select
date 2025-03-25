@@ -496,7 +496,7 @@ watch(
 .direct-list {
   border: var(--border-width) solid var(--border-normal);
   border-radius: var(--border-radius);
-  max-height: 300px;
+  max-height: 400px;
 }
 
 .drag-handle {
