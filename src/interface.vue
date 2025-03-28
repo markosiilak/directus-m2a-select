@@ -158,7 +158,7 @@ const props = defineProps<{
   disabled?: boolean;
   collections: CollectionConfig[];
   placeholder?: string;
-  outputFormat?: 'detailed' | 'simple' | 'ids';
+  outputFormat?: 'detailed' | 'simple' | 'ids' | 'languages';
   displayMode?: 'button' | 'drag';
 }>();
 
@@ -259,8 +259,23 @@ const emitValue = () => {
     case 'ids':
       emit('input', JSON.stringify(output.map(item => item.id)));
       break;
+    case 'languages':
+      const languages = output
+        .filter(item => item.collection === 'languages')
+        .map(item => {
+          const languageItem = collectionItems.value['languages']?.find(i => getItemIdentifier(i) === item.id);
+          if (languageItem) {
+            return {
+              language: item.value,
+              code: languageItem.code
+            };
+          }
+          return null;
+        })
+        .filter(Boolean);
+      emit('input', JSON.stringify(languages));
+      break;
     default:
-      // Detailed format
       emit('input', JSON.stringify(output));
   }
 };
@@ -269,8 +284,23 @@ const processValue = (value: any) => {
   if (!value) return [];
 
   try {
-    // If value is already an object/array, no need to parse
     const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+
+    // Handle languages format
+    if (props.outputFormat === 'languages' && Array.isArray(parsed)) {
+      return parsed.map(item => {
+        const languageItem = collectionItems.value['languages']?.find(lang => lang.code === item.code);
+        if (languageItem) {
+          return {
+            collection: 'languages',
+            field: 'name',
+            value: item.language || languageItem.name,
+            id: getItemIdentifier(languageItem)
+          };
+        }
+        return null;
+      }).filter(Boolean);
+    }
 
     // Handle object format (single item)
     if (!Array.isArray(parsed) && typeof parsed === 'object') {
