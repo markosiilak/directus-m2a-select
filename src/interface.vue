@@ -293,58 +293,64 @@ const processValue = (value: any) => {
         if (languageItem) {
           return {
             collection: 'languages',
-            field: 'name',
-            value: item.language || languageItem.name,
-            id: getItemIdentifier(languageItem)
+            outputField: 'name',
+            item: languageItem
           };
         }
         return null;
       }).filter(Boolean);
     }
 
-    // Handle object format (single item)
-    if (!Array.isArray(parsed) && typeof parsed === 'object') {
-      return [parsed];
+    // Handle simple format (array of strings)
+    if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
+      return Object.entries(collectionItems.value)
+        .flatMap(([collection, items]) => {
+          const config = props.collections.find(c => c.collection === collection);
+          if (!config) return [];
+          return items
+            .filter(item => parsed.includes(item[config.outputField]))
+            .map(item => ({
+              collection,
+              outputField: config.outputField,
+              item
+            }));
+        });
     }
 
-    // Handle array format
+    // Handle ids format
+    if (Array.isArray(parsed) && parsed.length > 0 && (typeof parsed[0] === 'number' || typeof parsed[0] === 'string')) {
+      return Object.entries(collectionItems.value)
+        .flatMap(([collection, items]) => {
+          const config = props.collections.find(c => c.collection === collection);
+          if (!config) return [];
+          return items
+            .filter(item => parsed.includes(getItemIdentifier(item)))
+            .map(item => ({
+              collection,
+              outputField: config.outputField,
+              item
+            }));
+        });
+    }
+
+    // Handle detailed format
     if (Array.isArray(parsed)) {
-      // Handle simple format (strings array)
-      if (parsed.length > 0 && typeof parsed[0] === 'string') {
-        return Object.entries(collectionItems.value)
-          .flatMap(([collection, items]) => {
-            const config = props.collections.find(c => c.collection === collection);
-            if (!config) return [];
-            return items
-              .filter(item => parsed.includes(item[config.outputField]))
-              .map(item => ({
-                collection,
-                field: config.outputField,
-                value: item[config.outputField],
-                id: getItemIdentifier(item)
-              }));
-          });
-      }
-
-      // Handle ids format
-      if (parsed.length > 0 && (typeof parsed[0] === 'number' || typeof parsed[0] === 'string')) {
-        return Object.entries(collectionItems.value)
-          .flatMap(([collection, items]) => {
-            const config = props.collections.find(c => c.collection === collection);
-            if (!config) return [];
-            return items
-              .filter(item => parsed.includes(getItemIdentifier(item)))
-              .map(item => ({
-                collection,
-                field: config.outputField,
-                value: item[config.outputField],
-                id: getItemIdentifier(item)
-              }));
-          });
-      }
+      return parsed.map(item => {
+        const config = props.collections.find(c => c.collection === item.collection);
+        if (!config) return null;
+        const foundItem = collectionItems.value[item.collection]?.find(
+          i => getItemIdentifier(i) === item.id
+        );
+        if (!foundItem) return null;
+        return {
+          collection: item.collection,
+          outputField: item.field || config.outputField,
+          item: foundItem
+        };
+      }).filter(Boolean);
     }
 
-    return parsed;
+    return [];
   } catch (error) {
     console.error('Error processing value:', error);
     return [];
@@ -428,29 +434,15 @@ watch(
   () => props.value,
   async (newValue) => {
     if (newValue) {
-      const items = processValue(newValue);
-      selectedItems.value = [];
-
-      for (const parsed of items) {
-        const config = props.collections.find(c => c.collection === parsed.collection);
-        if (config) {
-          if (!collectionItems.value[parsed.collection]) {
-            await fetchCollectionItems(parsed.collection);
-          }
-
-          const item = collectionItems.value[parsed.collection]?.find(
-            item => getItemIdentifier(item) === parsed.id
-          );
-
-          if (item) {
-            selectedItems.value.push({
-              collection: parsed.collection,
-              outputField: parsed.field,
-              item
-            });
-          }
+      // Wait for collection items to be loaded first
+      await Promise.all(props.collections.map(async (config) => {
+        if (!collectionItems.value[config.collection]) {
+          await fetchCollectionItems(config.collection);
         }
-      }
+      }));
+
+      const processedItems = processValue(newValue);
+      selectedItems.value = processedItems;
     } else {
       selectedItems.value = [];
     }
