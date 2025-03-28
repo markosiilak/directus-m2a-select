@@ -24,7 +24,7 @@
       />
       <v-list class="collection-list direct-list">
         <div class="draggable-container">
-          <template v-for="(item, index) in selectedItems" :key="`${item.collection}-${item.item.id}`">
+          <template v-for="(item, index) in selectedItems" :key="`${item.collection}-${getItemIdentifier(item.item)}`">
             <v-list-item
               draggable="true"
               @dragstart="dragStart($event, index)"
@@ -51,7 +51,7 @@
         <template v-for="config in collections" :key="config.collection">
           <v-list-item
             v-for="item in filteredUnselectedItems(config)"
-            :key="`${config.collection}-${item.id}`"
+            :key="`${config.collection}-${getItemIdentifier(item)}`"
             clickable
             @click="toggleItem(config, item)"
           >
@@ -80,15 +80,15 @@
         <template v-for="config in collections" :key="config.collection">
           <v-list-item
             v-for="item in filteredItems(config.collection, config.outputField)"
-            :key="`${config.collection}-${item.id}`"
+            :key="`${config.collection}-${getItemIdentifier(item)}`"
             clickable
-            :active="isSelected(config.collection, item.id)"
+            :active="isSelected(config.collection, getItemIdentifier(item))"
             @click="toggleItem(config, item)"
           >
             <v-list-item-content class="item-content">
               <div class="item-row">
                 <v-checkbox
-                  :model-value="isSelected(config.collection, item.id)"
+                  :model-value="isSelected(config.collection, getItemIdentifier(item))"
                   @update:model-value="toggleItem(config, item)"
                 />
                 <span class="item-label">{{ item[config.outputField] }}</span>
@@ -120,15 +120,15 @@
           <template v-for="config in collections" :key="config.collection">
             <v-list-item
               v-for="item in filteredItems(config.collection, config.outputField)"
-              :key="`${config.collection}-${item.id}`"
+              :key="`${config.collection}-${getItemIdentifier(item)}`"
               clickable
-              :active="isSelected(config.collection, item.id)"
+              :active="isSelected(config.collection, getItemIdentifier(item))"
               @click="toggleItem(config, item)"
             >
               <v-list-item-content class="item-content">
                 <div class="item-row">
                   <v-checkbox
-                    :model-value="isSelected(config.collection, item.id)"
+                    :model-value="isSelected(config.collection, getItemIdentifier(item))"
                     @update:model-value="toggleItem(config, item)"
                   />
                   <span class="item-label">{{ item[config.outputField] }}</span>
@@ -190,7 +190,7 @@ const displayMode = computed(() => props.displayMode || 'button');
 // Add this computed
 const filteredUnselectedItems = (config: CollectionConfig) => {
   const items = collectionItems.value[config.collection] || [];
-  const filtered = items.filter(item => !isSelected(config.collection, item.id));
+  const filtered = items.filter(item => !isSelected(config.collection, getItemIdentifier(item)));
   if (!searchQuery.value) return filtered;
   return filtered.filter(item =>
     String(item[config.outputField]).toLowerCase().includes(searchQuery.value.toLowerCase())
@@ -210,15 +210,20 @@ const fetchCollectionItems = async (collection: string) => {
   }
 };
 
-const isSelected = (collection: string, id: string) => {
+// Add this helper function after the api const
+const getItemIdentifier = (item: any): string => {
+  return item.id ?? item.name ?? JSON.stringify(item);
+};
+
+const isSelected = (collection: string, itemId: string) => {
   return selectedItems.value.some(
-    item => item.collection === collection && item.item.id === id
+    item => item.collection === collection && getItemIdentifier(item.item) === itemId
   );
 };
 
 const toggleItem = (config: CollectionConfig, item: any) => {
   const index = selectedItems.value.findIndex(
-    selected => selected.collection === config.collection && selected.item.id === item.id
+    selected => selected.collection === config.collection && getItemIdentifier(selected.item) === getItemIdentifier(item)
   );
 
   if (index === -1) {
@@ -244,7 +249,7 @@ const emitValue = () => {
     collection: item.collection,
     field: item.outputField,
     value: item.item[item.outputField],
-    id: item.item.id
+    id: getItemIdentifier(item.item)
   }));
 
   switch (props.outputFormat) {
@@ -286,7 +291,7 @@ const processValue = (value: any) => {
                 collection,
                 field: config.outputField,
                 value: item[config.outputField],
-                id: item.id
+                id: getItemIdentifier(item)
               }));
           });
       }
@@ -298,12 +303,12 @@ const processValue = (value: any) => {
             const config = props.collections.find(c => c.collection === collection);
             if (!config) return [];
             return items
-              .filter(item => parsed.includes(item.id))
+              .filter(item => parsed.includes(getItemIdentifier(item)))
               .map(item => ({
                 collection,
                 field: config.outputField,
                 value: item[config.outputField],
-                id: item.id
+                id: getItemIdentifier(item)
               }));
           });
       }
@@ -357,7 +362,7 @@ onMounted(async () => {
         const config = props.collections.find(c => c.collection === parsed.collection);
         if (config) {
           const item = collectionItems.value[parsed.collection]?.find(
-            item => item.id === parsed.id
+            item => getItemIdentifier(item) === parsed.id
           );
           if (item) {
             selectedItems.value.push({
@@ -376,7 +381,7 @@ onMounted(async () => {
 
 // Initialize selectedOrder when items are loaded
 watch(selectedItems, (items) => {
-  selectedOrder.value = items.map(item => `${item.collection}-${item.item.id}`);
+  selectedOrder.value = items.map(item => `${item.collection}-${getItemIdentifier(item.item)}`);
 }, { immediate: true });
 
 // Watch for collections changes
@@ -404,7 +409,7 @@ watch(
           }
 
           const item = collectionItems.value[parsed.collection]?.find(
-            item => item.id === parsed.id
+            item => getItemIdentifier(item) === parsed.id
           );
 
           if (item) {
