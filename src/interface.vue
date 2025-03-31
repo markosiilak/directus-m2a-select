@@ -8,7 +8,7 @@
         secondary
       >
         <span v-if="selectedItems.length" class="selected-values">
-          {{ selectedItems.map(item => item.item[item.outputField]).join(', ') }}
+          {{ selectedItems.map(item => getDisplayValue(item.item, item.outputField)).join(', ') }}
         </span>
         <span v-else>{{ placeholder || "Choose items..." }}</span>
         <v-icon name="arrow_right" />
@@ -39,7 +39,7 @@
                     :model-value="true"
                     @click.stop="toggleItem({ collection: item.collection, outputField: item.outputField }, item.item)"
                   />
-                  <span class="item-label">{{ item.item[item.outputField] }}</span>
+                  <span class="item-label">{{ getDisplayValue(item.item, item.outputField) }}</span>
                 </div>
               </v-list-item-content>
             </v-list-item>
@@ -60,9 +60,8 @@
                 <v-checkbox
                   :model-value="false"
                   @update:model-value="() => toggleItem(config, item)"
-                />@click="toggleItem(config, item)"
-                <span class="item-label">{{ item[config.outputField] }}</span>
-                <span class="item-label">{{ item[config.outputField] }}</span>
+                />
+                <span class="item-label">{{ getDisplayValue(item, config.outputField) }}</span>
               </div>
             </v-list-item-content>
           </v-list-item>
@@ -93,7 +92,7 @@
                   @click.stop
                   @click="toggleItem(config, item)"
                 />
-                <span class="item-label">{{ item[config.outputField] }}</span>
+                <span class="item-label">{{ getDisplayValue(item, config.outputField) }}</span>
               </div>
             </v-list-item-content>
           </v-list-item>
@@ -134,7 +133,7 @@
                     @click.stop
                     @click="toggleItem(config, item)"
                   />
-                  <span class="item-label">{{ item[config.outputField] }}</span>
+                  <span class="item-label">{{ getDisplayValue(item, config.outputField) }}</span>
                 </div>
               </v-list-item-content>
             </v-list-item>
@@ -182,22 +181,22 @@ const selectedOrder = ref<string[]>([]);
 const filteredItems = (collection: string, outputField: string) => {
   const items = collectionItems.value[collection] || [];
   if (!searchQuery.value) return items;
-  return items.filter(item =>
-    String(item[outputField]).toLowerCase().includes(searchQuery.value.toLowerCase())
-  );
+  return items.filter(item => {
+    const displayValue = getDisplayValue(item, outputField);
+    return String(displayValue).toLowerCase().includes(searchQuery.value.toLowerCase());
+  });
 };
 
-// Add this computed property
 const displayMode = computed(() => props.displayMode || 'button');
 
-// Add this computed
 const filteredUnselectedItems = (config: CollectionConfig) => {
   const items = collectionItems.value[config.collection] || [];
   const filtered = items.filter(item => !isSelected(config.collection, getItemIdentifier(item)));
   if (!searchQuery.value) return filtered;
-  return filtered.filter(item =>
-    String(item[config.outputField]).toLowerCase().includes(searchQuery.value.toLowerCase())
-  );
+  return filtered.filter(item => {
+    const displayValue = getDisplayValue(item, config.outputField);
+    return String(displayValue).toLowerCase().includes(searchQuery.value.toLowerCase());
+  });
 };
 
 // Methods
@@ -205,17 +204,63 @@ const fetchCollectionItems = async (collection: string) => {
   if (!collection) return;
 
   try {
-    const response = await api.get(`/items/${collection}`);
-    collectionItems.value[collection] = response.data.data;
+    let url = `/items/${collection}`;
+
+    if (props.collections.some(config =>
+        config.collection === collection && config.outputField === 'translations')) {
+      url += '?fields=*,translations.*';
+    }
+
+    const response = await api.get(url);
+    const items = response.data.data;
+
+    if (props.collections.some(config =>
+        config.collection === collection && config.outputField === 'translations')) {
+      for (const item of items) {
+        if (item.translations && Array.isArray(item.translations) && item.translations.length > 0) {
+          if (item.translations[0] && !item.translations[0].name && item.translations[0].id) {
+            try {
+              const translationsResponse = await api.get(`/items/translations?filter[id][_in]=${
+                item.translations.map((t: any) => t.id).join(',')
+              }`);
+              if (translationsResponse.data && translationsResponse.data.data) {
+                item.translations = translationsResponse.data.data;
+              }
+            } catch (error) {
+              console.error('Error fetching translations:', error);
+            }
+          }
+        }
+      }
+    }
+
+    collectionItems.value[collection] = items;
   } catch (error) {
     console.error(`Error fetching items for ${collection}:`, error);
     collectionItems.value[collection] = [];
   }
 };
 
-// Add this helper function after the api const
 const getItemIdentifier = (item: any): string => {
   return item.id ?? item.name ?? JSON.stringify(item);
+};
+
+const getDisplayValue = (item: any, outputField: string): string => {
+  if (!item) return '';
+
+  if (outputField === 'translations') {
+    if (item.translations && Array.isArray(item.translations) && item.translations.length > 0) {
+      for (const translation of item.translations) {
+        if (translation && translation.name) {
+          return translation.name;
+        }
+      }
+      return '[Translation without name]';
+    }
+    return item.name || item.title || '[No translations]';
+  }
+
+  return item[outputField] || '';
 };
 
 const isSelected = (collection: string, itemId: string) => {
@@ -230,7 +275,6 @@ const toggleItem = (config: CollectionConfig, item: any) => {
   );
 
   if (index === -1) {
-    // Create a new array reference for reactivity
     const newItems = [...selectedItems.value];
     newItems.push({
       collection: config.collection,
@@ -239,11 +283,9 @@ const toggleItem = (config: CollectionConfig, item: any) => {
     });
     selectedItems.value = newItems;
   } else {
-    // Create a new array reference for reactivity
     selectedItems.value = selectedItems.value.filter((_, i) => i !== index);
   }
 
-  // Ensure the value is emitted immediately
   emitValue();
 };
 
@@ -256,7 +298,7 @@ const emitValue = () => {
   const output = selectedItems.value.map(item => ({
     collection: item.collection,
     field: item.outputField,
-    value: item.item[item.outputField],
+    value: getDisplayValue(item.item, item.outputField),
     id: getItemIdentifier(item.item)
   }));
 
@@ -294,7 +336,6 @@ const processValue = (value: any) => {
   try {
     const parsed = typeof value === 'string' ? JSON.parse(value) : value;
 
-    // Handle languages format
     if (props.outputFormat === 'languages' && Array.isArray(parsed)) {
       return parsed.map(item => {
         const languageItem = collectionItems.value['languages']?.find(lang => lang.code === item.code);
@@ -309,7 +350,6 @@ const processValue = (value: any) => {
       }).filter(Boolean);
     }
 
-    // Handle simple format (array of strings)
     if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
       return Object.entries(collectionItems.value)
         .flatMap(([collection, items]) => {
@@ -325,7 +365,6 @@ const processValue = (value: any) => {
         });
     }
 
-    // Handle ids format
     if (Array.isArray(parsed) && parsed.length > 0 && (typeof parsed[0] === 'number' || typeof parsed[0] === 'string')) {
       return Object.entries(collectionItems.value)
         .flatMap(([collection, items]) => {
@@ -341,7 +380,6 @@ const processValue = (value: any) => {
         });
     }
 
-    // Handle detailed format
     if (Array.isArray(parsed)) {
       return parsed.map(item => {
         const config = props.collections.find(c => c.collection === item.collection);
@@ -365,7 +403,6 @@ const processValue = (value: any) => {
   }
 };
 
-// Add drag handlers
 const draggedItem = ref<number | null>(null);
 
 const dragStart = (event: DragEvent, index: number) => {
@@ -389,14 +426,11 @@ const drop = (event: DragEvent, index: number) => {
   emitValue();
 };
 
-// Initialize
 onMounted(async () => {
-  // Fetch items for all collections
   for (const config of props.collections) {
     await fetchCollectionItems(config.collection);
   }
 
-  // Set initial value if exists
   if (props.value) {
     try {
       const parsed = JSON.parse(props.value);
@@ -423,12 +457,10 @@ onMounted(async () => {
   }
 });
 
-// Initialize selectedOrder when items are loaded
 watch(selectedItems, (items) => {
   selectedOrder.value = items.map(item => `${item.collection}-${getItemIdentifier(item.item)}`);
 }, { immediate: true });
 
-// Watch for collections changes
 watch(() => props.collections, async (newCollections) => {
   for (const config of newCollections) {
     if (!collectionItems.value[config.collection]) {
@@ -437,12 +469,10 @@ watch(() => props.collections, async (newCollections) => {
   }
 }, { deep: true });
 
-// Watch for value changes
 watch(
   () => props.value,
   async (newValue) => {
     if (newValue) {
-      // Wait for collection items to be loaded first
       await Promise.all(props.collections.map(async (config) => {
         if (!collectionItems.value[config.collection]) {
           await fetchCollectionItems(config.collection);
