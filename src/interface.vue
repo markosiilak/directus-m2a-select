@@ -37,7 +37,7 @@
                   <v-icon name="drag_handle" class="drag-handle" />
                   <v-checkbox
                     :model-value="true"
-                    @update:model-value="() => toggleItem({ collection: item.collection, outputField: item.outputField }, item.item)"
+                    @click.stop="toggleItem({ collection: item.collection, outputField: item.outputField }, item.item)"
                   />
                   <span class="item-label">{{ item.item[item.outputField] }}</span>
                 </div>
@@ -60,7 +60,8 @@
                 <v-checkbox
                   :model-value="false"
                   @update:model-value="() => toggleItem(config, item)"
-                />
+                />@click="toggleItem(config, item)"
+                <span class="item-label">{{ item[config.outputField] }}</span>
                 <span class="item-label">{{ item[config.outputField] }}</span>
               </div>
             </v-list-item-content>
@@ -89,7 +90,8 @@
               <div class="item-row">
                 <v-checkbox
                   :model-value="isSelected(config.collection, getItemIdentifier(item))"
-                  @update:model-value="toggleItem(config, item)"
+                  @click.stop
+                  @click="toggleItem(config, item)"
                 />
                 <span class="item-label">{{ item[config.outputField] }}</span>
               </div>
@@ -129,7 +131,8 @@
                 <div class="item-row">
                   <v-checkbox
                     :model-value="isSelected(config.collection, getItemIdentifier(item))"
-                    @update:model-value="toggleItem(config, item)"
+                    @click.stop
+                    @click="toggleItem(config, item)"
                   />
                   <span class="item-label">{{ item[config.outputField] }}</span>
                 </div>
@@ -227,15 +230,20 @@ const toggleItem = (config: CollectionConfig, item: any) => {
   );
 
   if (index === -1) {
-    selectedItems.value.push({
+    // Create a new array reference for reactivity
+    const newItems = [...selectedItems.value];
+    newItems.push({
       collection: config.collection,
       outputField: config.outputField,
       item
     });
+    selectedItems.value = newItems;
   } else {
-    selectedItems.value.splice(index, 1);
+    // Create a new array reference for reactivity
+    selectedItems.value = selectedItems.value.filter((_, i) => i !== index);
   }
 
+  // Ensure the value is emitted immediately
   emitValue();
 };
 
@@ -442,7 +450,7 @@ watch(
       }));
 
       const processedItems = processValue(newValue);
-      selectedItems.value = processedItems;
+      selectedItems.value = processedItems.filter((item): item is { collection: string; outputField: string; item: any } => item !== null);
     } else {
       selectedItems.value = [];
     }
