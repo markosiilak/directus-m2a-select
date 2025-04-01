@@ -311,11 +311,17 @@ const emitValue = () => {
       };
     }
 
-    // Add slug field for article_category items from translations title
-    if (item.collection === 'article_category') {
+    // Add slug field for article_category items from the key field
+    if (item.collection === 'article_category' && item.item.key) {
+      return {
+        ...baseOutput,
+        slug: item.item.key
+      };
+    }
+    // Fallback for article_category if key doesn't exist, use generated slug from display value
+    else if (item.collection === 'article_category') {
       const displayValue = getDisplayValue(item.item, item.outputField);
       if (displayValue) {
-        // Create a slug from the display value (lowercase, replace spaces with dashes)
         const slug = displayValue
           .toLowerCase()
           .replace(/\s+/g, '-')
