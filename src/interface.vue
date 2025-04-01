@@ -255,9 +255,9 @@ const getDisplayValue = (item: any, outputField: string): string => {
           return translation.name;
         }
       }
-      return '[Translation without name]';
+      return 'Translation without name';
     }
-    return item.name || item.title || '[No translations]';
+    return item.name || item.title || 'No translations';
   }
 
   return item[outputField] || '';
@@ -295,12 +295,41 @@ const emitValue = () => {
     return;
   }
 
-  const output = selectedItems.value.map(item => ({
-    collection: item.collection,
-    field: item.outputField,
-    value: getDisplayValue(item.item, item.outputField),
-    id: getItemIdentifier(item.item)
-  }));
+  const output = selectedItems.value.map(item => {
+    const baseOutput = {
+      collection: item.collection,
+      field: item.outputField,
+      value: getDisplayValue(item.item, item.outputField),
+      id: getItemIdentifier(item.item)
+    };
+
+    // Add slug field for category items
+    if (item.collection === 'category' && item.item.key) {
+      return {
+        ...baseOutput,
+        slug: item.item.key
+      };
+    }
+
+    // Add slug field for article_category items from translations title
+    if (item.collection === 'article_category') {
+      const displayValue = getDisplayValue(item.item, item.outputField);
+      if (displayValue) {
+        // Create a slug from the display value (lowercase, replace spaces with dashes)
+        const slug = displayValue
+          .toLowerCase()
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9-]/g, '');
+
+        return {
+          ...baseOutput,
+          slug: slug
+        };
+      }
+    }
+
+    return baseOutput;
+  });
 
   switch (props.outputFormat) {
     case 'simple':
