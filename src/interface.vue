@@ -119,6 +119,9 @@
 
         <v-list class="collection-list">
           <template v-for="config in collections" :key="config.collection">
+            <div class="collection-header">
+              <v-list-item-content>{{ formatCollectionTitle(config.collection) }}</v-list-item-content>
+            </div>
             <v-list-item
               v-for="item in filteredItems(config.collection, config.outputField)"
               :key="`${config.collection}-${getItemIdentifier(item)}`"
@@ -303,6 +306,16 @@ const emitValue = () => {
       id: getItemIdentifier(item.item)
     };
 
+    // Include all language translations when the field is translations
+    if (item.outputField === 'translations' && item.item.translations && Array.isArray(item.item.translations)) {
+      baseOutput.translations = item.item.translations
+        .filter((translation: any) => translation && translation.name)
+        .map((translation: any) => ({
+          language: translation.languages_code || translation.language || '',
+          value: translation.name
+        }));
+    }
+
     // Add slug field for category items
     if (item.collection === 'category' && item.item.key) {
       return {
@@ -459,6 +472,16 @@ const drop = (event: DragEvent, index: number) => {
   selectedItems.value = items;
   draggedItem.value = null;
   emitValue();
+};
+
+const formatCollectionTitle = (collection: string) => {
+  // Convert snake_case or kebab-case to Title Case
+  return collection
+    .replace(/_/g, ' ')
+    .replace(/-/g, ' ')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 };
 
 onMounted(async () => {
