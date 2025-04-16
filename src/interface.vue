@@ -303,7 +303,8 @@ const emitValue = () => {
       collection: item.collection,
       field: item.outputField,
       value: getDisplayValue(item.item, item.outputField),
-      id: getItemIdentifier(item.item)
+      id: getItemIdentifier(item.item),
+      title: item.item.title || item.item.name || getDisplayValue(item.item, item.outputField)
     };
 
     // Include all language translations when the field is translations
